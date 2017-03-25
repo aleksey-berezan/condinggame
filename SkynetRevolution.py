@@ -7,6 +7,9 @@ import math
 # n: the total number of nodes in the level, including the gateways
 # l: the number of links
 # e: the number of exit gateways
+
+infinity = sys.maxsize
+
 n, l, e = [int(i) for i in raw_input().split()]
 links = []
 for i in xrange(l):
@@ -19,47 +22,99 @@ for i in xrange(e):
     ei = int(raw_input())  # the index of a gateway node
     exits.append(ei)
 
-def find_shortest_path(start, end, links, acc, min_so_far):
-    if start == end:
-        min_so_far[0] = min(min_so_far[0], len(acc))
-        return acc
+def is_linked_by(node, link):
+    l_from, l_to = link
+    return node == l_from or node == l_to
 
-    if min_so_far[0] < len(acc):
-        return None
+def get_link_to(node, link):
+    if not is_linked_by(node, link):
+        raise Exception("{0} is not linked by {1}".format(node, link))
 
-    results = []
+    l_from, l_to = link
+    return l_to if l_from == node else l_from
+
+def fill_distances(current, end, links, node_infos, visited):
+
+    neighbors = []
     for link in links:
-        l_from, l_to = link
-        if l_from != start and l_to != start:
+        if not is_linked_by(current, link):
             continue
-        l_to = l_to if l_from == start else l_from
+        neighbor = get_link_to(current, link)
 
-        acc_copy = list(acc)
-        acc_copy.append(link)
-        links_copy = list(links)
-        links_copy.remove(link)
-
-        result = find_shortest_path(l_to, end, links_copy, acc_copy, min_so_far)
-        if result == None:
+        if neighbor in visited:
             continue
-        results.append(result)
 
-    if len(results) == 0:
+        neighbors.append(neighbor)
+
+    if len(neighbors) == 0:
+        # explicit exit from recursion
+        return
+
+    for neighbor in neighbors:
+        node_infos[neighbor] = min(node_infos[neighbor], node_infos[current] + 1)
+
+    visited.append(current)
+    for neighbor in neighbors:
+        fill_distances(neighbor, end, links, node_infos, visited)
+
+def find_shortest_path(start, end, links, nodes):
+    # init
+    node_infos = { }
+    for node in nodes:
+        node_infos[node] = infinity
+    node_infos[start] = 0
+
+    # traverse
+    fill_distances(start, end, links, node_infos, [])
+
+    # backtrack
+    path = []
+    current = end
+    if node_infos[current] == infinity:
         return None
+    while node_infos[current] > 0:
+        min_neighbor, min_distance = None, infinity
+        for link in links:
+            if not is_linked_by(current, link):
+                continue
 
-    sorted_results = sorted(results, key=lambda l:len(l))
-    res = sorted_results[0]
-    min_so_far[0] = min(min_so_far[0], len(res))
-    return res
+            neighbor = get_link_to(current, link)
+            distance = node_infos[neighbor]
+            if distance < min_distance:
+                min_neighbor, min_distance = neighbor, distance
 
+        path.append((current, min_neighbor))
+        current = min_neighbor
+
+    # result
+    return list(reversed(path))
+
+def get_nodes(links):
+    nodes = []
+    for a,b in links:
+        nodes.append(a)
+        nodes.append(b)
+    return list(set(nodes))
+
+def remove_link(link, links):
+    if link in links:
+        links.remove(link)
+        return
+    l1,l2 = link
+    link2 = l2,l1
+    if link2 in links:
+        links.remove(link2)
+        return
+
+nodes = get_nodes(links)
 # game loop
 while True:
     si = int(raw_input())
     shortest_paths = []
-    limit = len(links)-1
+    #limit = len(links)-1
     for ei in exits:
-        shortest_path = find_shortest_path(si, ei, links, [], [limit])
-        limit = min(len(shortest_path), limit) if shortest_path != None else limit
+        shortest_path = find_shortest_path(si, ei, links, nodes)
+        #limit = min(len(shortest_path), limit) if shortest_path != None else limit
         if shortest_path != None:
             shortest_paths.append(shortest_path)
 
@@ -67,13 +122,6 @@ while True:
     shortest_path = shortest_paths[0]
     link_to_severe = shortest_path[0]
     print(str(link_to_severe[0]) + " " + str(link_to_severe[1]))
-    links.remove(link_to_severe)
-    blocked_exits = list(exits)
-    for ei in exits:
-        for f,t in links:
-            if f == ei or t == ei:
-                blocked_exits.remove(ei)
-                break
-    for ei in blocked_exits:
-        exits.remove(ei)
-
+    # l1,l2 = link_to_severe
+    # links.remove(link_to_severe)
+    remove_link(link_to_severe, links)
