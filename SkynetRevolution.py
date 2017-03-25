@@ -19,7 +19,7 @@ for i in xrange(l):
 
 exits = []
 for i in xrange(e):
-    ei = int(raw_input())  # the index of a gateway node
+    ei = int(raw_input())# the index of a gateway node
     exits.append(ei)
 
 def is_linked_by(node, link):
@@ -29,33 +29,29 @@ def is_linked_by(node, link):
 def get_link_to(node, link):
     if not is_linked_by(node, link):
         raise Exception("{0} is not linked by {1}".format(node, link))
-
     l_from, l_to = link
     return l_to if l_from == node else l_from
 
-def fill_distances(current, end, links, node_infos, visited):
+def fill_distances(start, end, links, node_infos, visited):
+    q = [start]
+    while len(q) > 0:
+        current = q[-1]
+        del q[-1]
 
-    neighbors = []
-    for link in links:
-        if not is_linked_by(current, link):
-            continue
-        neighbor = get_link_to(current, link)
+        neighbors = []
+        for link in links:
+            if not is_linked_by(current, link):
+                continue
+            neighbor = get_link_to(current, link)
+            if neighbor in visited:
+                continue
+            neighbors.append(neighbor)
 
-        if neighbor in visited:
-            continue
+        for neighbor in neighbors:
+            node_infos[neighbor] = min(node_infos[neighbor], node_infos[current] + 1)
 
-        neighbors.append(neighbor)
-
-    if len(neighbors) == 0:
-        # explicit exit from recursion
-        return
-
-    for neighbor in neighbors:
-        node_infos[neighbor] = min(node_infos[neighbor], node_infos[current] + 1)
-
-    visited.append(current)
-    for neighbor in neighbors:
-        fill_distances(neighbor, end, links, node_infos, visited)
+        visited.append(current)
+        q += neighbors
 
 def find_shortest_path(start, end, links, nodes):
     # init
@@ -87,7 +83,7 @@ def find_shortest_path(start, end, links, nodes):
         current = min_neighbor
 
     # result
-    return list(reversed(path))
+    return list(path)
 
 def get_nodes(links):
     nodes = []
@@ -111,17 +107,12 @@ nodes = get_nodes(links)
 while True:
     si = int(raw_input())
     shortest_paths = []
-    #limit = len(links)-1
     for ei in exits:
         shortest_path = find_shortest_path(si, ei, links, nodes)
-        #limit = min(len(shortest_path), limit) if shortest_path != None else limit
         if shortest_path != None:
             shortest_paths.append(shortest_path)
 
     shortest_paths = sorted(shortest_paths, key=lambda l:len(l))
-    shortest_path = shortest_paths[0]
-    link_to_severe = shortest_path[0]
+    link_to_severe = shortest_paths[0][-1]
     print(str(link_to_severe[0]) + " " + str(link_to_severe[1]))
-    # l1,l2 = link_to_severe
-    # links.remove(link_to_severe)
     remove_link(link_to_severe, links)
