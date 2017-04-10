@@ -16,6 +16,11 @@ class Queue:
     def empty(self):
         return len(self.data) == 0
 
+# r: number of rows.
+# c: number of columns.
+# a: number of rounds between the time the alarm countdown is activated and the time the alarm goes off.
+r, c, a = [int(i) for i in raw_input().split()]
+
 def debug(msg):
     print >> sys.stderr, msg
 
@@ -33,17 +38,11 @@ def get_distance(distances, location):
     else:
         return None;
 
-def in_bounds(location):
+def in_bounds(maze, location):
+    rr = len(maze)
+    cc = len(maze[0])
     nr, nc = location
-    return nr < r and nc < c
-
-# Auto-generated code below aims at helping you parse
-# the standard input according to the problem statement.
-
-# r: number of rows.
-# c: number of columns.
-# a: number of rounds between the time the alarm countdown is activated and the time the alarm goes off.
-r, c, a = [int(i) for i in raw_input().split()]
+    return nr < rr and nc < cc
 
 def get_navigatable_neighbors(maze, current):
     cr, cc = current
@@ -55,7 +54,7 @@ def get_navigatable_neighbors(maze, current):
         
         #if nr >= r or nc >= c:
         #    continue
-        if not in_bounds((nr, nc)):
+        if not in_bounds(maze, (nr, nc)):
             continue
         if maze[nr][nc] == '#':
             continue
@@ -81,7 +80,7 @@ def trace_back(maze, distances, finish, start):
             nr = cr + rv
             nc = cc + cv
             next = nr, nc
-            if not in_bounds(next):
+            if not in_bounds(maze, next):
                 continue
             
             if maze[nr][nc] == '#':
@@ -102,14 +101,14 @@ def trace_back(maze, distances, finish, start):
 def find_nearest(maze, start, predicate):
     cr, cc = current = start
     distances = { current: 0 }
-    visited = []    
+    visited = {}
 
     q = Queue()
     q.enqueue(start)
 
     while not q.empty():        
         current = q.dequeue()
-        visited.append(current)
+        visited[current] = None
         cr, cc = current
         if predicate(maze[cr][cc]):
             shortest_path = trace_back(maze, distances, current, start)
@@ -127,16 +126,13 @@ def find_nearest(maze, start, predicate):
             q.enqueue((nr, nc))
 
     return None
-    #raise Exception("Unable to find {0} from {1}".format(target, start))
 
 # game loop
-target = '?'
 mode = 'explore' # explore_C_seen,
 while True:
     # kr: row where Kirk is located.
     # kc: column where Kirk is located.
     kr, kc = [int(i) for i in raw_input().split()]
-    debug("Kirk at {0} with mode {1}".format((kr, kc), mode))
 
     # init maze
     maze = [None] * r    
@@ -159,6 +155,7 @@ while True:
     if maze[kr][kc] == 'C':
         mode = 'C_triggered'
     
+    debug("Mode is " + mode)
     if mode == 'explore':
         nkr, nkc = find_nearest(maze, (kr, kc), lambda cell_content: cell_content == '?')
     elif mode == 'explore_C_seen':
