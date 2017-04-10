@@ -1,47 +1,42 @@
 import sys
 import math
+import Queue
 
-class Queue:
-    def __init__(self):
-        self.data = []
-
-    def enqueue(self, x):
-        self.data.append(x)
-
-    def dequeue(self):
-        r = self.data[0]
-        del self.data[0]
-        return r
-
-    def empty(self):
-        return len(self.data) == 0
+def debug(msg):
+    print >> sys.stderr, msg
 
 # r: number of rows.
 # c: number of columns.
 # a: number of rounds between the time the alarm countdown is activated and the time the alarm goes off.
 r, c, a = [int(i) for i in raw_input().split()]
 
-def debug(msg):
-    print >> sys.stderr, msg
-
+debug("r={0}, c={1}, a = {2}".format(r,c,a))
 
 def set_min_distance(distances, location, value):
     if location in distances:
-        distances[location] = min(distances[location], value)
+        current = distances[location]
+        if current > value:
+            distances[location] = value
+            return True
+        else:
+            return False
+        #distances[location] = min(distances[location], value)
     else:
         distances[location] = value
+        return True
 
 def get_distance(distances, location):
-    #return distances[location]
     if location in distances:
         return distances[location]
     else:
         return None;
 
 def in_bounds(maze, location):
-    rr = len(maze)
-    cc = len(maze[0])
     nr, nc = location
+    if nr <= 0 or nc <= 0:
+        return False
+    rr = len(maze)
+    cc = len(maze[0])    
     return nr < rr and nc < cc
 
 def get_navigatable_neighbors(maze, current):
@@ -51,9 +46,6 @@ def get_navigatable_neighbors(maze, current):
     for rv, cv in [(0, +1), (0, -1), (+1, 0), (-1, 0)]:
         nr = cr + rv
         nc = cc + cv
-        
-        #if nr >= r or nc >= c:
-        #    continue
         if not in_bounds(maze, (nr, nc)):
             continue
         if maze[nr][nc] == '#':
@@ -63,7 +55,7 @@ def get_navigatable_neighbors(maze, current):
         debug("Unable to find navigatable neighbors of " + str(current))
     return neighbors
 
-def trace_back(maze, distances, finish, start):    
+def trace_back(maze, distances, finish, start): 
     current = finish
     cr, cc = current
     result = []
@@ -88,7 +80,7 @@ def trace_back(maze, distances, finish, start):
             d = get_distance(distances, next)
             if d == None:
                 continue
-            if d >= min_distance:
+            if d > min_distance:
                 continue
             min_distance = d
             min_location = (nr, nc)
@@ -103,11 +95,11 @@ def find_nearest(maze, start, predicate):
     distances = { current: 0 }
     visited = {}
 
-    q = Queue()
-    q.enqueue(start)
+    q = Queue.Queue()
+    q.put(start)
 
-    while not q.empty():        
-        current = q.dequeue()
+    while not q.empty():
+        current = q.get()
         visited[current] = None
         cr, cc = current
         if predicate(maze[cr][cc]):
@@ -118,12 +110,11 @@ def find_nearest(maze, start, predicate):
         
         current_distance = get_distance(distances, current)
         for neighbor in neighbors:
-            nr, nc = neighbor
-            if neighbor in visited:
-                
-                continue
-            set_min_distance(distances, neighbor, current_distance + 1)
-            q.enqueue((nr, nc))
+            # if neighbor in visited:
+            #     continue
+            updated = set_min_distance(distances, neighbor, current_distance + 1)
+            if updated:
+                q.put(neighbor)
 
     return None
 
@@ -138,6 +129,7 @@ while True:
     maze = [None] * r    
     for i in xrange(r):
         row = raw_input()  # C of the characters in '#.TC?' (i.e. one line of the ASCII maze).
+        maze[i] = list(row)
         row_str = str(row)
         row_str = list(row)
         if mode == 'explore':
@@ -150,8 +142,8 @@ while True:
             row_str[kc] = 'K'
         row_str = "".join(row_str)
             
-        debug("{0}: {1}".format(i, row_str))
-        maze[i] = list(row)
+        debug("{0:>2d}: {1}".format(i, row_str))
+        
     if maze[kr][kc] == 'C':
         mode = 'C_triggered'
     
