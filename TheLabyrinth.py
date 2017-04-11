@@ -39,7 +39,7 @@ def in_bounds(maze, location):
     cc = len(maze[0])    
     return nr < rr and nc < cc
 
-def get_navigatable_neighbors(maze, current):
+def get_navigatable_neighbors(maze, current, skip):
     cr, cc = current
     
     neighbors = []
@@ -50,6 +50,9 @@ def get_navigatable_neighbors(maze, current):
             continue
         if maze[nr][nc] == '#':
             continue
+        if maze[nr][nc] in skip:
+            continue
+
         neighbors.append((nr, nc))
     if len(neighbors) == 0:
         debug("Unable to find navigatable neighbors of " + str(current))
@@ -68,7 +71,7 @@ def trace_back(maze, distances, finish, start):
             break
 
         min_location = None        
-        for rv, cv in [(0, +1), (0, -1), (+1, 0), (-1, 0)]:
+        for rv, cv in [(0, -1), (0, +1), (+1, 0), (-1, 0)]:
             nr = cr + rv
             nc = cc + cv
             next = nr, nc
@@ -90,31 +93,42 @@ def trace_back(maze, distances, finish, start):
         current = min_location
     return list(reversed(result))
 
-def find_nearest(maze, start, predicate):
+def find_nearest(maze, start, predicate, probe_all = False, skip = []):
     cr, cc = current = start
     distances = { current: 0 }
     visited = {}
 
     q = Queue.Queue()
     q.put(start)
+    
+    result = None
 
     while not q.empty():
         current = q.get()
         visited[current] = None
         cr, cc = current
         if predicate(maze[cr][cc]):
-            shortest_path = trace_back(maze, distances, current, start)
-            return shortest_path[1]
+            result = current
+            if not probe_all:
+                shortest_path = trace_back(maze, distances, current, start)
+                return shortest_path[1]
+            continue
 
-        neighbors = get_navigatable_neighbors(maze, current)
+        neighbors = get_navigatable_neighbors(maze, current, skip)
         
         current_distance = get_distance(distances, current)
+        to_add = []
         for neighbor in neighbors:
-            # if neighbor in visited:
-            #     continue
             updated = set_min_distance(distances, neighbor, current_distance + 1)
             if updated:
-                q.put(neighbor)
+                to_add.append(neighbor)
+                #q.put(neighbor)
+        for neighbor in sorted(to_add, key = lambda n: get_distance(distances, n)):
+            q.put(neighbor)
+
+    if probe_all and result != None:
+        shortest_path = trace_back(maze, distances, result, start)
+        return shortest_path[1] 
 
     return None
 
@@ -161,7 +175,7 @@ while True:
     elif mode == 'C_found':
         nkr, nkc = find_nearest(maze, (kr, kc), lambda cell_content: cell_content == 'C')
     elif mode == 'C_triggered':
-        nkr, nkc = find_nearest(maze, (kr, kc), lambda cell_content: cell_content == 'T')
+        nkr, nkc = find_nearest(maze, (kr, kc), lambda cell_content: cell_content == 'T', True, ['?'])
 
     debug("Current={0}, next={1}".format((kr, kc), (nkr, nkc)))
 
