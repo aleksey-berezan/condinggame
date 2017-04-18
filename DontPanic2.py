@@ -74,13 +74,10 @@ def find_path(start_floor, start_pos, exit_floor, exit_pos, floors_map, total_el
         distances[key] = distance
 
         # finish node
-        if pos == exit_pos and floor >= nb_floors:
+        if pos == exit_pos and floor == exit_floor:
             if finish_node == None:
                 finish_node = current
             else:
-                # debug("candidate: {0} - {1}".format(current.distance, backtrack(current)))
-                # if distance == 0:
-                #    raise Exception("distance is zero: {0} for {1}".format(current.floor, backtrack(current)))
                 finish_node = current if distance < finish_node.distance else finish_node
             continue
 
@@ -95,15 +92,33 @@ def find_path(start_floor, start_pos, exit_floor, exit_pos, floors_map, total_el
             next_distance = distance + 3
             q.put(Node(elevators_left - 1, next_distance, direction, "ELEVATOR", floor + 1, pos, current, floor, pos))
         
-        # probe elevator righ below the exit
+        # probe additional elevators
         if elevators_left > 0:
-            next_action, next_direction, next_distance = get_next_step(pos, direction, exit_pos, distance)
-            walk = Node(elevators_left, next_distance, next_direction, next_action, floor + 1, exit_pos, current, floor, pos)
-            if walk.action != "WAIT":
-                # q.put(walk)
-                q.put(Node(elevators_left - 1, walk.distance + 3, direction, "ELEVATOR", floor + 1, exit_pos, walk, floor, exit_pos))
-            else:
-                q.put(Node(elevators_left - 1, distance + 3, direction, "ELEVATOR", floor + 1, exit_pos, current, floor, exit_pos))
+            elevator_poss = [exit_pos]
+            for ex in exits:
+                elevator_poss.append(ex - 1)
+                elevator_poss.append(ex + 1)
+            elevator_poss = list(set(elevator_poss))
+            temp = list(elevator_poss)
+            elevator_poss = []
+            for t in temp:
+                if t == pos:
+                    continue
+                if t <= 0:
+                    continue
+                if t >= width:
+                    continue
+                elevator_poss.append(t)
+            elevator_poss = filter_exits(pos, elevator_poss)
+
+            for elevator_pos in elevator_poss:
+                next_action, next_direction, next_distance = get_next_step(pos, direction, elevator_pos, distance)
+                walk = Node(elevators_left, next_distance, next_direction, next_action, floor + 1, elevator_pos, current, floor, pos)
+                if walk.action != "WAIT":
+                    # q.put(walk)
+                    q.put(Node(elevators_left - 1, walk.distance + 3, direction, "ELEVATOR", floor + 1, elevator_pos, walk, floor, elevator_pos))
+                else:
+                    q.put(Node(elevators_left - 1, distance + 3, direction, "ELEVATOR", floor + 1, elevator_pos, current, floor, elevator_pos))
 
     # backtrack
     debug("backtracking")
@@ -168,5 +183,3 @@ while True:
         debug("gonna wait")
         print "WAIT"
     debug("Optimal path is: " + str(optimal_path))
-
-
